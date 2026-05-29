@@ -18,21 +18,21 @@ import { Sprout, Package, MapPin, Check, CheckCircle, Pause, PartyPopper, Trash2
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 const CATEGORY_OPTIONS: { value: Category; label: string }[] = [
-  { value: 'animales',      label: 'Animales'      },
-  { value: 'tractores',     label: 'Tractores'     },
-  { value: 'herramientas',  label: 'Herramientas'  },
-  { value: 'semillas',      label: 'Semillas'       },
+  { value: 'animales', label: 'Animales' },
+  { value: 'tractores', label: 'Tractores' },
+  { value: 'herramientas', label: 'Herramientas' },
+  { value: 'semillas', label: 'Semillas' },
   { value: 'fertilizantes', label: 'Fertilizantes' },
-  { value: 'otros',         label: 'Otros'          },
+  { value: 'otros', label: 'Otros' },
 ];
 
 const STATUS_META: Record<
   Product['status'],
   { label: string; color: string; bg: string }
 > = {
-  activo:  { label: 'Activo',   color: '#16a34a', bg: '#dcfce7' },
-  vendido: { label: 'Vendido',  color: '#2563eb', bg: '#dbeafe' },
-  pausado: { label: 'Pausado',  color: '#d97706', bg: '#fef3c7' },
+  activo: { label: 'Activo', color: '#16a34a', bg: '#dcfce7' },
+  vendido: { label: 'Vendido', color: '#2563eb', bg: '#dbeafe' },
+  pausado: { label: 'Pausado', color: '#d97706', bg: '#fef3c7' },
 };
 
 function formatPrice(price: number, currency: string) {
@@ -145,35 +145,35 @@ function ProductSkeleton() {
 
 // ─── Página principal ──────────────────────────────────────────────────────────
 export default function MisProductosPage() {
-  const router      = useRouter();
+  const router = useRouter();
 
   // Auth
-  const [user,        setUser]        = useState<User | null>(null);
-  const [profile,     setProfile]     = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   // Productos
-  const [products,        setProducts]        = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
 
   // UI
-  const [showForm,      setShowForm]      = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   // Formulario
-  const [title,       setTitle]       = useState('');
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [price,       setPrice]       = useState('');
-  const [currency,    setCurrency]    = useState<'USD' | 'VES'>('USD');
-  const [category,    setCategory]    = useState<Category>('animales');
-  const [location,    setLocation]    = useState('');
+  const [price, setPrice] = useState('');
+  const [currency, setCurrency] = useState<'USD' | 'VES'>('USD');
+  const [category, setCategory] = useState<Category>('animales');
+  const [location, setLocation] = useState('');
 
   // Imagen Cloudinary URL
   const [uploadedImageUrl, setUploadedImageUrl] = useState('');
 
   // Submit
-  const [submitting,   setSubmitting]   = useState(false);
-  const [submitError,  setSubmitError]  = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   // ── Cargar auth + perfil ──────────────────────────────────────────────────
   useEffect(() => {
@@ -228,18 +228,18 @@ export default function MisProductosPage() {
 
       // 2. Crear documento en Firestore
       await addProduct({
-        title:       title.trim(),
+        title: title.trim(),
         description: description.trim(),
-        price:       parseFloat(price),
+        price: parseFloat(price),
         currency,
         category,
-        location:    location.trim(),
+        location: location.trim(),
         imageUrl,
-        vendorId:    user.uid,
-        vendorName:  profile.nombre,
+        vendorId: user.uid,
+        vendorName: profile.nombre,
         vendorPhone: profile.telefono,
-        createdAt:   new Date().toISOString(),
-        status:      'activo',
+        createdAt: new Date().toISOString(),
+        status: 'activo',
       });
 
       resetForm();
@@ -288,8 +288,8 @@ export default function MisProductosPage() {
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   const stats: { label: string; value: number; icon: React.ComponentType<{ size?: number }> }[] = [
-    { label: 'Total',    value: products.length,                                   icon: Package },
-    { label: 'Activos',  value: products.filter((p) => p.status === 'activo').length,  icon: CheckCircle },
+    { label: 'Total', value: products.length, icon: Package },
+    { label: 'Activos', value: products.filter((p) => p.status === 'activo').length, icon: CheckCircle },
     { label: 'Vendidos', value: products.filter((p) => p.status === 'vendido').length, icon: PartyPopper },
     { label: 'Pausados', value: products.filter((p) => p.status === 'pausado').length, icon: Pause },
   ];
@@ -418,17 +418,16 @@ export default function MisProductosPage() {
         {/* ── MODAL DE PUBLICACIÓN ───────────────────────────────────── */}
         {showForm && profile?.rol === 'vendedor' && (
           <div
-            className="fixed inset-0 bg-[rgba(13,40,24,0.65)] backdrop-blur-[6px] z-[100] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]"
+            className="fixed inset-0 bg-[rgba(13,40,24,0.65)] backdrop-blur-[6px] z-100 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]"
             onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); resetForm(); } }}
             role="dialog"
             aria-modal="true"
             aria-label="Publicar producto"
           >
-            <div className="bg-white rounded-3xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto shadow-[0_20px_60px_rgba(27,67,50,0.25)] animate-[slideUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]">
+            <div className="bg-white rounded-3xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto shadow-modal animate-[slideUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]">
               {/* Header */}
-              <div className="relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#1b4332] to-[#2d6a4f] h-[100px] rounded-t-3xl">
+              <div className="relative flex items-center justify-center overflow-hidden bg-linear-to-br from-primary-dark to-primary h-[100px] rounded-t-3xl">
                 <div className="text-center">
-                  <PenLine size={36} className="text-white/90 mx-auto" />
                   <h2 className="font-display text-xl font-bold text-white mt-1">Nueva publicación</h2>
                 </div>
                 <button

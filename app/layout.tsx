@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     description: "El marketplace agrícola número 1 de Venezuela",
     type: "website",
   },
+  icons: {
+    icon: "/iconAgro.png",
+  }
 };
 
 export default function RootLayout({ children, }: Readonly<{ children: React.ReactNode; }>) {

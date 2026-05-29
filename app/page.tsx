@@ -444,13 +444,8 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
           {/* Logo */}
           <Link href="/" id="logo-link" className="flex items-center gap-2 shrink-0">
-            <Sprout size={24} style={{ color: 'var(--color-primary)' }} />
-            <span
-              className="font-display font-bold text-lg hidden sm:block"
-              style={{ color: 'var(--color-primary-dark)' }}
-            >
-              Agro<span style={{ color: 'var(--color-accent)' }}>Market</span>
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/iconAgro.png" alt="AgroMarket" className="h-9 w-auto" />
           </Link>
 
           {/* Barra de búsqueda (desktop) */}
@@ -511,7 +506,7 @@ export default function Home() {
                   </button>
                   {userMenuOpen && (
                     <div
-                      className="absolute right-0 top-full mt-2 w-52 rounded-2xl overflow-hidden border"
+                      className="absolute right-0 top-full mt-2 w-52 rounded-2xl overflow-hidden border z-60"
                       style={{ background: 'white', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-card-hover)' }}
                     >
                       <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
@@ -600,7 +595,7 @@ export default function Home() {
       {/* ── CATEGORÍAS ──────────────────────────────────────────────────── */}
       <section className="py-6 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto py-2 scrollbar-hide">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
@@ -704,7 +699,6 @@ export default function Home() {
             {/* Header */}
             <div className="relative flex items-center justify-center overflow-hidden bg-linear-to-br from-primary-dark to-primary h-[100px] rounded-t-3xl">
               <div className="text-center">
-                <PenLine size={40} className="text-white/90" />
                 <h2 className="font-display text-xl font-bold text-white mt-2">Nueva publicación</h2>
               </div>
               <button
