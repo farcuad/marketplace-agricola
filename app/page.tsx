@@ -6,7 +6,9 @@ import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { auth, getProducts, addProduct, getUserProfile } from '@/src/lib/firebase';
 import type { Product, Category, CategoryConfig, UserProfile } from '@/src/types';
 import SubirImagen from '@/src/components/loadImage';
-import { Sprout, Rabbit, Tractor, Wrench, FlaskConical, Package, MapPin, User as UserIcon, Phone, Store, DollarSign, Rocket, PenLine, Check, Flag, SearchX } from 'lucide-react';
+import { Sprout, Rabbit, Tractor, Wrench, FlaskConical, Package, MapPin, User as UserIcon, Phone, Store, DollarSign, Rocket, PenLine, Check, Flag, SearchX, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const ITEMS_PER_PAGE = 15;
 
 // ─── Configuración de categorías ──────────────────────────────────────────────
 const CATEGORIES: CategoryConfig[] = [
@@ -108,7 +110,7 @@ function ProductCard({ product, onSelect }: ProductCardProps) {
             src={product.imageUrl}
             alt={product.title}
             loading="lazy"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', padding: '4px' }}
           />
         ) : (
           <CategoryIcon id={cat.id} size={56} />
@@ -198,7 +200,7 @@ function ProductModal({ product, onClose }: ProductModalProps) {
             <img
               src={product.imageUrl}
               alt={product.title}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.92 }}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', padding: '8px' }}
             />
           ) : (
             <span style={{ fontSize: '5rem', filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.25))' }}>
@@ -318,6 +320,7 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category | 'todos'>('todos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
   // Estado del modal de publicación
@@ -370,6 +373,11 @@ export default function Home() {
     };
   }, [activeCategory]);
 
+  // Resetear página al cambiar categoría o búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, searchQuery]);
+
   // Filtrado por búsqueda (client-side)
   const filtered = products.filter((p) => {
     const q = searchQuery.toLowerCase();
@@ -381,6 +389,12 @@ export default function Home() {
       p.vendorName.toLowerCase().includes(q)
     );
   });
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedProducts = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -656,9 +670,44 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {filtered.map((product) => (
+              {paginatedProducts.map((product) => (
                 <ProductCard key={product.id} product={product} onSelect={setSelectedProduct} />
               ))}
+            </div>
+          )}
+
+          {!loading && totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-green-50"
+                style={{ color: 'var(--color-primary)' }}
+              >
+                <ChevronLeft size={16} /> Anterior
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className="w-9 h-9 rounded-xl text-sm font-bold transition-all"
+                  style={{
+                    background: page === currentPage ? 'var(--color-primary)' : 'transparent',
+                    color: page === currentPage ? '#fff' : 'var(--color-text)',
+                    border: page === currentPage ? 'none' : '1px solid var(--color-border)',
+                  }}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-green-50"
+                style={{ color: 'var(--color-primary)' }}
+              >
+                Siguiente <ChevronRight size={16} />
+              </button>
             </div>
           )}
         </div>
@@ -735,7 +784,7 @@ export default function Home() {
                   {publishImageUrl ? (
                     <div className="relative rounded-2xl overflow-hidden border-2 group animate-fade-in" style={{ borderColor: 'var(--color-border)' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={publishImageUrl} alt="Previsualización" className="w-full h-48 object-cover" />
+                      <img src={publishImageUrl} alt="Previsualización" className="w-full h-48 object-contain bg-text" />
                       <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.45)' }}>
                         <button
                           type="button"

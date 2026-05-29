@@ -67,7 +67,7 @@ function VendorProductCard({ product, onStatusChange, onDelete }: VendorCardProp
             src={product.imageUrl}
             alt={product.title}
             loading="lazy"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain p-1"
           />
         ) : (
           <div
@@ -461,7 +461,7 @@ export default function MisProductosPage() {
                     {uploadedImageUrl ? (
                       <div className="relative rounded-2xl overflow-hidden border-2 group animate-fade-in" style={{ borderColor: 'var(--color-border)' }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={uploadedImageUrl} alt="Previsualización" className="w-full h-48 object-cover" />
+                        <img src={uploadedImageUrl} alt="Previsualización" className="w-full h-48 object-contain bg-text" />
                         <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.45)' }}>
                           <button
                             type="button"
