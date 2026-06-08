@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { registrarUsuarioConRol } from "@/src/lib/auth";
+import Swal from 'sweetalert2';
 
 interface FormData {
   nombre: string;
@@ -38,7 +39,7 @@ export default function RegistroPage() {
         telefono: formData.telefono,
         rol: formData.rol,
       });
-      alert("¡Usuario registrado con éxito!");
+      Swal.fire({ icon: 'success', title: '¡Registro exitoso!', text: 'Tu cuenta ha sido creada.', confirmButtonColor: '#16a34a' });
     } catch (err) {
       setError((err as Error).message || "Ocurrió un error al registrar el usuario");
     } finally {

@@ -21,7 +21,7 @@ import {
   uploadBytesResumable,
   getDownloadURL,
 } from "firebase/storage";
-import type { Category, Product, UserProfile } from "@/src/types";
+import type { Category, Product, UserProfile, Order } from "@/src/types";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -227,6 +227,16 @@ export async function deleteProduct(productId: string): Promise<void> {
   await deleteDoc(doc(db, "products", productId));
 }
 
+/**
+ * Actualiza campos de un producto existente.
+ */
+export async function updateProduct(
+  productId: string,
+  data: Partial<Omit<Product, "id" | "vendorId" | "createdAt">>
+): Promise<void> {
+  await updateDoc(doc(db, "products", productId), data);
+}
+
 // ─── Firestore: Usuarios ───────────────────────────────────────────────────────
 
 /**
@@ -241,6 +251,59 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     console.error("getUserProfile:", err);
     return null;
   }
+}
+
+// ─── Firestore: Órdenes / Ventas ───────────────────────────────────────────────
+
+function generarIdOrden(): string {
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `ORD-${rand}`;
+}
+
+export async function createOrder(data: Omit<Order, 'id' | 'id_orden' | 'fecha_contacto' | 'estado'>): Promise<string> {
+  const docRef = await addDoc(collection(db, "orders"), {
+    ...data,
+    id_orden: generarIdOrden(),
+    fecha_contacto: new Date().toISOString(),
+    estado: 'contactado',
+  });
+  return docRef.id;
+}
+
+export async function getBuyerOrders(buyerId: string): Promise<Order[]> {
+  try {
+    const q = query(
+      collection(db, "orders"),
+      where("id_comprador", "==", buyerId)
+    );
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as Order))
+      .sort((a, b) => new Date(b.fecha_contacto).getTime() - new Date(a.fecha_contacto).getTime());
+  } catch (err) {
+    console.error("getBuyerOrders:", err);
+    return [];
+  }
+}
+
+export async function getSellerOrders(sellerId: string): Promise<Order[]> {
+  try {
+    const q = query(
+      collection(db, "orders"),
+      where("id_vendedor", "==", sellerId)
+    );
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as Order))
+      .sort((a, b) => new Date(b.fecha_contacto).getTime() - new Date(a.fecha_contacto).getTime());
+  } catch (err) {
+    console.error("getSellerOrders:", err);
+    return [];
+  }
+}
+
+export async function updateOrderStatus(orderId: string, estado: Order['estado']): Promise<void> {
+  await updateDoc(doc(db, "orders", orderId), { estado });
 }
 
 export { db, analytics, auth, storage };

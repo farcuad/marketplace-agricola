@@ -1,0 +1,10 @@
+Import traces:
+  Client Component Browser:
+    ./src/components/DashboardAside.tsx [Client Component Browser]
+    ./app/mis-compras/page.tsx [Client Component Browser]
+    ./app/mis-compras/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/DashboardAside.tsx [Client Component SSR]
+    ./app/mis-compras/page.tsx [Client Component SSR]
+    ./app

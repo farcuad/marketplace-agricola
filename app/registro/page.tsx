@@ -256,16 +256,6 @@ export default function RegistroPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
 
-      {/* Header */}
-      <header className="header-glass h-14 flex items-center px-6">
-        <Link href="/" id="back-home-registro" className="flex items-center gap-2 group">
-          <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" style={{ color: 'var(--color-primary)' }} />
-          <span className="font-display font-bold text-base" style={{ color: 'var(--color-primary-dark)' }}>
-            Agro<span style={{ color: 'var(--color-accent)' }}>Market</span>
-          </span>
-        </Link>
-      </header>
-
       <div className="flex flex-1">
 
         {/* Panel lateral decorativo */}
@@ -314,6 +304,12 @@ export default function RegistroPage() {
         {/* Formulario */}
         <main className="flex flex-1 items-center justify-center p-6 lg:max-w-lg xl:max-w-xl w-full">
           <div className="w-full max-w-md">
+
+            <Link href="/" id="back-home-registro" className="flex items-center gap-1.5 text-xs font-medium mb-6 px-3 py-1.5 rounded-full border transition-colors hover:bg-gray-50 w-fit" style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
+              <ArrowLeft size={14} />
+              AgroMarket
+            </Link>
+
             <div className="auth-card p-8 sm:p-10">
 
               <StepIndicator step={step} />

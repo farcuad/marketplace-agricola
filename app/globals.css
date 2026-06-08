@@ -187,6 +187,11 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
 @utility animate-float {
   animation: float 3s ease-in-out infinite;
 }
