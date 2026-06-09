@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { auth, getProducts, addProduct, getUserProfile } from '@/src/lib/firebase';
+import { auth, getProducts, addProduct, getUserProfile, createOrder, getOrderByProductAndBuyer } from '@/src/lib/firebase';
 import type { Product, Category, CategoryConfig, UserProfile } from '@/src/types';
 import SubirImagen from '@/src/components/loadImage';
 import { Sprout, Rabbit, Tractor, Wrench, FlaskConical, Package, MapPin, User as UserIcon, Phone, Store, Rocket, PenLine, Check, SearchX, ChevronLeft, ChevronRight, ShoppingCart, ShoppingBag } from 'lucide-react';
@@ -297,7 +297,7 @@ function ProductModal({ product, onClose, user, userProfile }: ProductModalProps
 
           {/* WhatsApp CTA */}
           <button
-            onClick={() => {
+            onClick={async () => {
               if (!user) {
                 Swal.fire({
                   title: 'Inicia sesión',
@@ -315,6 +315,25 @@ function ProductModal({ product, onClose, user, userProfile }: ProductModalProps
                   }
                 });
                 return;
+              }
+              try {
+                const existing = await getOrderByProductAndBuyer(product.id, user.uid);
+                if (!existing) {
+                  await createOrder({
+                    productId: product.id,
+                    nombre_producto: product.title,
+                    precio_unitario: product.price,
+                    cantidad_solicitada: 1,
+                    total_estimado: product.price,
+                    imageUrl: product.imageUrl,
+                    id_vendedor: product.vendorId,
+                    nombre_vendedor: product.vendorName,
+                    id_comprador: user.uid,
+                    nombre_comprador: userProfile?.nombre ?? 'Comprador',
+                  });
+                }
+              } catch (err) {
+                console.error('Error al registrar el contacto:', err);
               }
               window.open(waUrl, '_blank', 'noopener,noreferrer');
             }}
