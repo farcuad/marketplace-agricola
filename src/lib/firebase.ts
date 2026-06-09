@@ -270,6 +270,22 @@ export async function createOrder(data: Omit<Order, 'id' | 'id_orden' | 'fecha_c
   return docRef.id;
 }
 
+export async function getOrderByProductId(productId: string): Promise<Order | null> {
+  try {
+    const q = query(
+      collection(db, "orders"),
+      where("productId", "==", productId)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const doc = snap.docs[0];
+    return { id: doc.id, ...doc.data() } as Order;
+  } catch (err) {
+    console.error("getOrderByProductId:", err);
+    return null;
+  }
+}
+
 export async function getBuyerOrders(buyerId: string): Promise<Order[]> {
   try {
     const q = query(

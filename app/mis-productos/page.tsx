@@ -11,6 +11,9 @@ import {
   addProduct,
   updateProductStatus,
   deleteProduct,
+  createOrder,
+  getOrderByProductId,
+  updateOrderStatus,
 } from '@/src/lib/firebase';
 import type { Product, UserProfile, Category } from '@/src/types';
 import SubirImagen from '@/src/components/loadImage';
@@ -296,6 +299,30 @@ export default function MisProductosPage() {
   const handleStatusChange = async (productId: string, status: Product['status']) => {
     try {
       await updateProductStatus(productId, status);
+
+      if (status === 'vendido') {
+        const product = products.find((p) => p.id === productId);
+        if (product) {
+          const existingOrder = await getOrderByProductId(productId);
+          if (existingOrder) {
+            await updateOrderStatus(existingOrder.id, 'completado');
+          } else {
+            await createOrder({
+              productId: product.id,
+              nombre_producto: product.title,
+              precio_unitario: product.price,
+              cantidad_solicitada: 1,
+              total_estimado: product.price,
+              imageUrl: product.imageUrl,
+              id_vendedor: product.vendorId,
+              nombre_vendedor: product.vendorName,
+              id_comprador: '',
+              nombre_comprador: 'Venta directa',
+            });
+          }
+        }
+      }
+
       setProducts((prev) =>
         prev.map((p) => (p.id === productId ? { ...p, status } : p))
       );

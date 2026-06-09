@@ -11,24 +11,24 @@ import { Sprout, Rabbit, MapPin, MessageCircle, Eye, EyeOff, ArrowLeft } from 'l
 // ─── Mapeo de errores Firebase → español ─────────────────────────────────────
 function traducirError(code: string): string {
   const map: Record<string, string> = {
-    'auth/invalid-email':         'El correo electrónico no es válido.',
-    'auth/user-disabled':         'Esta cuenta ha sido deshabilitada.',
-    'auth/user-not-found':        'No existe una cuenta con ese correo.',
-    'auth/wrong-password':        'Contraseña incorrecta.',
-    'auth/invalid-credential':    'Correo o contraseña incorrectos.',
-    'auth/too-many-requests':     'Demasiados intentos. Intenta de nuevo más tarde.',
-    'auth/network-request-failed':'Error de conexión. Revisa tu internet.',
+    'auth/invalid-email': 'El correo electrónico no es válido.',
+    'auth/user-disabled': 'Esta cuenta ha sido deshabilitada.',
+    'auth/user-not-found': 'No existe una cuenta con ese correo.',
+    'auth/wrong-password': 'Contraseña incorrecta.',
+    'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+    'auth/too-many-requests': 'Demasiados intentos. Intenta de nuevo más tarde.',
+    'auth/network-request-failed': 'Error de conexión. Revisa tu internet.',
   };
   return map[code] ?? 'Ocurrió un error. Inténtalo de nuevo.';
 }
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email,    setEmail]    = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPwd,  setShowPwd]  = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
@@ -62,8 +62,11 @@ export default function LoginPage() {
     setResetLoading(true);
     setResetMsg('');
     try {
-      await sendPasswordResetEmail(auth, resetEmail.trim());
-      setResetMsg('Correo de restablecimiento enviado. Revisa tu bandeja de entrada.');
+      await sendPasswordResetEmail(auth, resetEmail.trim(), {
+        url: window.location.origin + '/login',
+        handleCodeInApp: false,
+      });
+      setResetMsg('Correo de restablecimiento enviado. Revisa tu bandeja de SPAM');
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? '';
       setResetMsg(traducirError(code));
@@ -276,6 +279,15 @@ export default function LoginPage() {
               Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
             </p>
 
+            <input
+              type="email"
+              placeholder="tu@correo.com"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              className="form-input mb-5"
+              disabled={resetLoading}
+            />
+
             {resetMsg && (
               <div
                 className="flex items-start gap-2 p-3 rounded-xl mb-5 text-sm"
@@ -296,14 +308,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            <input
-              type="email"
-              placeholder="tu@correo.com"
-              value={resetEmail}
-              onChange={(e) => setResetEmail(e.target.value)}
-              className="form-input mb-5"
-              disabled={resetLoading}
-            />
 
             <div className="flex gap-3">
               <button

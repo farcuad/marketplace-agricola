@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { auth, getProducts, addProduct, getUserProfile, createOrder } from '@/src/lib/firebase';
+import { auth, getProducts, addProduct, getUserProfile } from '@/src/lib/firebase';
 import type { Product, Category, CategoryConfig, UserProfile } from '@/src/types';
 import SubirImagen from '@/src/components/loadImage';
 import { Sprout, Rabbit, Tractor, Wrench, FlaskConical, Package, MapPin, User as UserIcon, Phone, Store, Rocket, PenLine, Check, SearchX, ChevronLeft, ChevronRight, ShoppingCart, ShoppingBag } from 'lucide-react';
@@ -317,18 +317,6 @@ function ProductModal({ product, onClose, user, userProfile }: ProductModalProps
                 return;
               }
               window.open(waUrl, '_blank', 'noopener,noreferrer');
-              createOrder({
-                productId: product.id,
-                nombre_producto: product.title,
-                precio_unitario: product.price,
-                cantidad_solicitada: 1,
-                total_estimado: product.price,
-                imageUrl: product.imageUrl,
-                id_vendedor: product.vendorId,
-                nombre_vendedor: product.vendorName,
-                id_comprador: user.uid,
-                nombre_comprador: userProfile?.nombre ?? user.email ?? 'Comprador',
-              }).catch(console.error);
             }}
             id={`whatsapp-${product.id}`}
             className="inline-flex items-center justify-center gap-2.5 py-[14px] px-7 rounded-xl bg-linear-to-br from-whatsapp to-[#128c7e] text-white font-bold text-base border-none cursor-pointer transition-all duration-250 no-underline w-full hover:translate-y-[-3px]hover:shadow-[0_8px_28px_rgba(37,211,102,0.40)]"
