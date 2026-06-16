@@ -30,7 +30,7 @@ function MapCenterUpdater({ center }: { center: [number, number] }) {
 interface MapViewProps {
   center: [number, number];
   markerPosition: [number, number];
-  onMarkerDrag: (lat: number, lng: number) => void;
+  onMarkerDrag?: (lat: number, lng: number) => void;
 }
 
 // ─── Componente del mapa (solo cliente) ──────────────────────────────────────
@@ -54,14 +54,18 @@ export default function MapView({
       <MapCenterUpdater center={center} />
       <Marker
         position={markerPosition}
-        draggable={true}
-        eventHandlers={{
-          dragend: (e) => {
-            const marker = e.target;
-            const pos = marker.getLatLng();
-            onMarkerDrag(pos.lat, pos.lng);
-          },
-        }}
+        draggable={!!onMarkerDrag}
+        eventHandlers={
+          onMarkerDrag
+            ? {
+                dragend: (e) => {
+                  const marker = e.target;
+                  const pos = marker.getLatLng();
+                  onMarkerDrag(pos.lat, pos.lng);
+                },
+              }
+            : undefined
+        }
       />
     </MapContainer>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { auth, getProducts, addProduct, getUserProfile, createOrder, getOrderByProductAndBuyer, addComment, getComments, addRating, getUserRating, getProductRatings, updateProduct } from '@/src/lib/firebase';
@@ -201,6 +202,8 @@ interface ProductModalProps {
   onProductUpdate?: (updated: Product) => void;
 }
 
+const MapView = dynamic(() => import('@/src/components/MapView'), { ssr: false });
+
 function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: ProductModalProps) {
   const cat = getCategoryConfig(product.category);
   const waUrl = buildWhatsAppUrl(product.vendorPhone, product.title);
@@ -217,17 +220,20 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
   const categoryDetails = product.categoryDetails;
   const fields = CATEGORY_FIELDS[product.category] ?? [];
 
-  // Cargar comentarios y rating
+  // Cargar comentarios, rating y total de likes/dislikes
   useEffect(() => {
     const load = async () => {
       setCommentsLoading(true);
       try {
-        const [c, r] = await Promise.all([
+        const [c, r, counts] = await Promise.all([
           getComments(product.id),
           user ? getUserRating(product.id, user.uid) : Promise.resolve(null),
+          getProductRatings(product.id),
         ]);
         setComments(c);
         setUserRating(r);
+        setProductLikes(counts.likes);
+        setProductDislikes(counts.dislikes);
       } finally {
         setCommentsLoading(false);
       }
@@ -401,6 +407,17 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
               </div>
             </div>
           </div>
+
+          {/* Mapa de ubicación */}
+          {product.locationLat != null && product.locationLng != null && (
+            <div className="rounded-xl overflow-hidden border animate-fade-in" style={{ borderColor: 'var(--color-border)' }}>
+              <MapView
+                key={product.id}
+                center={[product.locationLat, product.locationLng]}
+                markerPosition={[product.locationLat, product.locationLng]}
+              />
+            </div>
+          )}
 
           {/* Likes / Dislikes */}
           <div className="flex items-center gap-4">

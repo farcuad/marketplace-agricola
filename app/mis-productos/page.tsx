@@ -507,7 +507,7 @@ export default function MisProductosPage() {
                 </svg>
                 Ir al Marketplace
               </Link>
-              {profile?.rol === 'vendedor' || profile?.rol === 'ambos' && (
+              {(profile?.rol === 'vendedor' || profile?.rol === 'ambos') && (
                 <button
                   id="open-publish-modal-btn"
                   onClick={() => { setShowForm(true); resetForm(); }}
@@ -521,7 +521,7 @@ export default function MisProductosPage() {
           </div>
 
           <p className="text-sm mb-8 -mt-4" style={{ color: 'var(--color-text-muted)' }}>
-            {profile?.rol === 'vendedor' || profile?.rol === 'ambos'
+            {(profile?.rol === 'vendedor' || profile?.rol === 'ambos')
               ? 'Gestiona tus publicaciones en el marketplace'
               : 'Tu cuenta está registrada como comprador'}
           </p>
@@ -563,7 +563,7 @@ export default function MisProductosPage() {
           )}
 
           {/* ── MODAL DE PUBLICACIÓN ───────────────────────────────────── */}
-          {showForm && profile?.rol === 'vendedor' || profile?.rol === 'ambos' && (
+          {(showForm && (profile?.rol === 'vendedor' || profile?.rol === 'ambos')) && (
             <div
               className="fixed inset-0 bg-[rgba(13,40,24,0.65)] backdrop-blur-[6px] z-100 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]"
               onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); resetForm(); } }}
@@ -891,7 +891,7 @@ export default function MisProductosPage() {
                 <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>
                   Publica tu primer producto y llega a compradores de todo Venezuela
                 </p>
-                {profile?.rol === 'vendedor' || profile?.rol === 'ambos' && (
+                {(profile?.rol === 'vendedor' || profile?.rol === 'ambos') && (
                   <button
                     onClick={() => setShowForm(true)}
                     className="btn-primary mt-6"
