@@ -1,0 +1,15 @@
+[browser] Uncaught Error: iconUrl not set in Icon options (see the docs).
+    at MapView (src/components/MapView.tsx:74:7)
+    at LocationPicker (src/components/LocationPicker.tsx:197:11)
+    at Home (app/page.tsx:1178:21)
+  72 |       />
+  73 |       <MapCenterUpdater center={center} />
+> 74 |       <Marker
+     |       ^
+  75 |         position={markerPosition}
+  76 |         draggable={true}
+  77 |         eventHandlers={{
+[browser] Uncaught TypeError: Cannot read properties of undefined (reading '_leaflet_events')
+    at MapContainerComponent (<anonymous>)
+[browser] Uncaught TypeError: Cannot read properties of undefined (reading '_leaflet_events')
+    at ContainerComponent (<anonymous>)

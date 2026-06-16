@@ -18,7 +18,7 @@ interface RegistroParams {
   nombre: string;
   /** Número venezolano sin +58, ej: 4141234567 */
   telefono: string;
-  rol: "comprador" | "vendedor";
+  rol: "comprador" | "vendedor" | "ambos";
 }
 
 /**

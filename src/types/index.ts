@@ -17,6 +17,11 @@ export interface Product {
   category: Category;
   imageUrl?: string;
   location: string;
+  locationLat?: number;
+  locationLng?: number;
+  categoryDetails?: Record<string, string>;
+  likes: number;
+  dislikes: number;
   vendorId: string;
   vendorName: string;
   /** Número sin prefijo +58, ej: 4141234567 */
@@ -32,7 +37,7 @@ export interface UserProfile {
   email: string;
   /** Número sin prefijo +58, ej: 4141234567 */
   telefono: string;
-  rol: 'comprador' | 'vendedor';
+  rol: 'comprador' | 'vendedor' | 'ambos';
   createdAt: string;
 }
 
@@ -52,6 +57,25 @@ export interface Order {
   nombre_comprador: string;
   fecha_contacto: string;
   estado: 'contactado' | 'completado' | 'cancelado';
+}
+
+// ─── Comentario en publicación ──────────────────────────────────────────────────
+export interface Comment {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  text: string;
+  createdAt: string;
+}
+
+// ─── Voto (like/dislike) ────────────────────────────────────────────────────────
+export interface Rating {
+  id: string;
+  productId: string;
+  userId: string;
+  type: 'like' | 'dislike';
+  createdAt: string;
 }
 
 // ─── Configuración de categorías (UI) ─────────────────────────────────────────

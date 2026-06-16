@@ -8,7 +8,7 @@ import { auth } from '@/src/lib/firebase';
 import { registrarUsuarioConRol } from '@/src/lib/auth';
 import { ShoppingCart, Store, Rabbit, Tractor, Sprout, Flag, Check, Eye, EyeOff, ArrowLeft, ArrowRight } from 'lucide-react';
 
-type Rol = 'comprador' | 'vendedor';
+type Rol = 'comprador' | 'vendedor' | 'ambos';
 type Step = 1 | 2;
 
 // ─── Mapeo de errores Firebase → español ─────────────────────────────────────
@@ -343,6 +343,15 @@ export default function RegistroPage() {
                       description="Publica tus animales, tractores o herramientas."
                       perks={['Publicaciones ilimitadas', 'Perfil de tienda', 'Recibe contactos por WhatsApp']}
                     />
+                    <RoleCard
+                      rol="ambos"
+                      selected={rol === 'ambos'}
+                      onClick={() => setRol('ambos')}
+                      emoji={<div className="flex -space-x-1"><ShoppingCart size={20} className="text-white" /><Store size={20} className="text-white" /></div>}
+                      title="Ambos"
+                      description="Compra y vende productos del campo."
+                      perks={['Publicaciones ilimitadas', 'Contacto por WhatsApp', 'Perfil de tienda', 'Sin comisiones']}
+                    />
                   </div>
 
                   <button
@@ -388,7 +397,7 @@ export default function RegistroPage() {
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
                       style={{ background: 'rgba(45,106,79,0.12)', color: 'var(--color-primary)' }}
                     >
-                      {rol === 'vendedor' ? 'Vendedor' : 'Comprador'}
+                      {rol === 'vendedor' ? 'Vendedor' : rol === 'ambos' ? 'Comprador y Vendedor' : 'Comprador'}
                     </span>
                   </p>
 

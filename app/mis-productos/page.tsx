@@ -19,7 +19,8 @@ import type { Product, UserProfile, Category } from '@/src/types';
 import SubirImagen from '@/src/components/loadImage';
 import DashboardAside from '@/src/components/DashboardAside';
 import DashboardHeader from '@/src/components/DashboardHeader';
-import { Sprout, Package, MapPin, Check, CheckCircle, Pause, PartyPopper, Trash2, Hand, PenLine, Rocket, ShoppingCart, ShoppingBag, Plus, X } from 'lucide-react';
+import { Sprout, Package, MapPin, Check, CheckCircle, Pause, PartyPopper, Trash2, Hand, PenLine, Rocket, ShoppingCart, ShoppingBag, Plus, X, Crosshair } from 'lucide-react';
+import LocationPicker from '@/src/components/LocationPicker';
 import { updateProduct } from '@/src/lib/firebase';
 import Swal from 'sweetalert2';
 
@@ -32,6 +33,42 @@ const CATEGORY_OPTIONS: { value: Category; label: string }[] = [
   { value: 'fertilizantes', label: 'Fertilizantes' },
   { value: 'otros', label: 'Otros' },
 ];
+
+// ─── Campos dinámicos por categoría ──────────────────────────────────────────
+interface CategoryField {
+  key: string;
+  label: string;
+  type?: 'text' | 'number' | 'date';
+  placeholder?: string;
+}
+
+const CATEGORY_FIELDS: Record<string, CategoryField[]> = {
+  tractores: [
+    { key: 'marca', label: 'Marca', placeholder: 'John Deere' },
+    { key: 'modelo', label: 'Modelo', placeholder: '5075E' },
+    { key: 'anio', label: 'Año', type: 'number', placeholder: '2020' },
+    { key: 'horas_uso', label: 'Horas de uso', type: 'number', placeholder: '1500' },
+  ],
+  animales: [
+    { key: 'raza', label: 'Raza', placeholder: 'Brahman' },
+    { key: 'edad', label: 'Edad', placeholder: '3 años' },
+    { key: 'peso', label: 'Peso (kg)', type: 'number', placeholder: '450' },
+  ],
+  semillas: [
+    { key: 'tipo', label: 'Tipo', placeholder: 'Maíz' },
+    { key: 'marca', label: 'Marca', placeholder: 'Pioneer' },
+    { key: 'fecha_vencimiento', label: 'Vencimiento', type: 'date' },
+  ],
+  herramientas: [
+    { key: 'marca', label: 'Marca', placeholder: 'Stihl' },
+    { key: 'estado', label: 'Estado', placeholder: 'Usado / Nuevo' },
+  ],
+  fertilizantes: [
+    { key: 'tipo', label: 'Tipo', placeholder: 'Urea' },
+    { key: 'marca', label: 'Marca', placeholder: 'Yara' },
+    { key: 'presentacion', label: 'Presentación', placeholder: 'Saco 50kg' },
+  ],
+};
 
 const STATUS_META: Record<
   Product['status'],
@@ -185,7 +222,10 @@ export default function MisProductosPage() {
   const [editCurrency, setEditCurrency] = useState<'USD' | 'VES' | 'COP'>('USD');
   const [editCategory, setEditCategory] = useState<Category>('animales');
   const [editLocation, setEditLocation] = useState('');
+  const [editLocationLat, setEditLocationLat] = useState<number | undefined>();
+  const [editLocationLng, setEditLocationLng] = useState<number | undefined>();
   const [editImageUrl, setEditImageUrl] = useState('');
+  const [editCategoryDetails, setEditCategoryDetails] = useState<Record<string, string>>({});
   const [editSaving, setEditSaving] = useState(false);
 
   // Formulario
@@ -195,6 +235,9 @@ export default function MisProductosPage() {
   const [currency, setCurrency] = useState<'USD' | 'VES'>('USD');
   const [category, setCategory] = useState<Category>('animales');
   const [location, setLocation] = useState('');
+  const [locationLat, setLocationLat] = useState<number | undefined>();
+  const [locationLng, setLocationLng] = useState<number | undefined>();
+  const [categoryDetails, setCategoryDetails] = useState<Record<string, string>>({});
 
   // Imagen Cloudinary URL
   const [uploadedImageUrl, setUploadedImageUrl] = useState('');
@@ -238,9 +281,12 @@ export default function MisProductosPage() {
     setDescription('');
     setPrice('');
     setLocation('');
+    setLocationLat(undefined);
+    setLocationLng(undefined);
     setCategory('animales');
     setCurrency('USD');
     setUploadedImageUrl('');
+    setCategoryDetails({});
     setSubmitError('');
   };
 
@@ -262,6 +308,11 @@ export default function MisProductosPage() {
         currency,
         category,
         location: location.trim(),
+        locationLat: locationLat,
+        locationLng: locationLng,
+        categoryDetails: Object.keys(categoryDetails).length > 0 ? categoryDetails : undefined,
+        likes: 0,
+        dislikes: 0,
         imageUrl,
         vendorId: user.uid,
         vendorName: profile.nombre,
@@ -361,7 +412,10 @@ export default function MisProductosPage() {
     setEditCurrency(product.currency);
     setEditCategory(product.category);
     setEditLocation(product.location);
+    setEditLocationLat(product.locationLat);
+    setEditLocationLng(product.locationLng);
     setEditImageUrl(product.imageUrl ?? '');
+    setEditCategoryDetails(product.categoryDetails ?? {});
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -376,12 +430,15 @@ export default function MisProductosPage() {
         currency: editCurrency,
         category: editCategory,
         location: editLocation.trim(),
+        locationLat: editLocationLat,
+        locationLng: editLocationLng,
+        categoryDetails: Object.keys(editCategoryDetails).length > 0 ? editCategoryDetails : undefined,
         imageUrl: editImageUrl,
       });
       setProducts((prev) =>
         prev.map((p) =>
           p.id === editingProduct.id
-            ? { ...p, title: editTitle.trim(), description: editDescription.trim(), price: parseFloat(editPrice), currency: editCurrency, category: editCategory, location: editLocation.trim(), imageUrl: editImageUrl }
+            ? { ...p, title: editTitle.trim(), description: editDescription.trim(), price: parseFloat(editPrice), currency: editCurrency, category: editCategory, location: editLocation.trim(), locationLat: editLocationLat, locationLng: editLocationLng, categoryDetails: editCategoryDetails, imageUrl: editImageUrl }
             : p
         )
       );
@@ -450,7 +507,7 @@ export default function MisProductosPage() {
                 </svg>
                 Ir al Marketplace
               </Link>
-              {profile?.rol === 'vendedor' && (
+              {profile?.rol === 'vendedor' || profile?.rol === 'ambos' && (
                 <button
                   id="open-publish-modal-btn"
                   onClick={() => { setShowForm(true); resetForm(); }}
@@ -464,7 +521,7 @@ export default function MisProductosPage() {
           </div>
 
           <p className="text-sm mb-8 -mt-4" style={{ color: 'var(--color-text-muted)' }}>
-            {profile?.rol === 'vendedor'
+            {profile?.rol === 'vendedor' || profile?.rol === 'ambos'
               ? 'Gestiona tus publicaciones en el marketplace'
               : 'Tu cuenta está registrada como comprador'}
           </p>
@@ -506,7 +563,7 @@ export default function MisProductosPage() {
           )}
 
           {/* ── MODAL DE PUBLICACIÓN ───────────────────────────────────── */}
-          {showForm && profile?.rol === 'vendedor' && (
+          {showForm && profile?.rol === 'vendedor' || profile?.rol === 'ambos' && (
             <div
               className="fixed inset-0 bg-[rgba(13,40,24,0.65)] backdrop-blur-[6px] z-100 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]"
               onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); resetForm(); } }}
@@ -595,8 +652,34 @@ export default function MisProductosPage() {
                       <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{description.length}/600 caracteres</p>
                     </div>
 
-                    {/* Precio + Moneda + Ubicación */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* Campos dinámicos por categoría */}
+                    {CATEGORY_FIELDS[category]?.length > 0 && (
+                      <div>
+                        <label className="form-label">Detalles de {CATEGORY_OPTIONS.find((o) => o.value === category)?.label}</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {CATEGORY_FIELDS[category].map((field) => (
+                            <div key={field.key}>
+                              <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-muted)' }}>
+                                {field.label}
+                              </label>
+                              <input
+                                type={field.type || 'text'}
+                                placeholder={field.placeholder}
+                                value={categoryDetails[field.key] || ''}
+                                onChange={(e) =>
+                                  setCategoryDetails((prev) => ({ ...prev, [field.key]: e.target.value }))
+                                }
+                                className="form-input"
+                                disabled={submitting}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Precio + Moneda */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="prod-price" className="form-label">Precio</label>
                         <input id="prod-price" type="number" required min="0" step="0.01" placeholder="1200" value={price} onChange={(e) => setPrice(e.target.value)} className="form-input" disabled={submitting} />
@@ -608,10 +691,21 @@ export default function MisProductosPage() {
                           <option value="VES">VES – Bolívares</option>
                         </select>
                       </div>
-                      <div>
-                        <label htmlFor="prod-location" className="form-label">Ubicación</label>
-                        <input id="prod-location" type="text" required placeholder="Ej: Barinas, Venezuela" value={location} onChange={(e) => setLocation(e.target.value)} className="form-input" disabled={submitting} />
-                      </div>
+                    </div>
+
+                    {/* Ubicación (fila completa para que el mapa se vea bien) */}
+                    <div>
+                      <label htmlFor="prod-location" className="form-label">Ubicación</label>
+                      <LocationPicker
+                        value={location}
+                        onChange={(val, lat, lng) => {
+                          setLocation(val);
+                          setLocationLat(lat);
+                          setLocationLng(lng);
+                        }}
+                        disabled={submitting}
+                        placeholder="Barinas, Venezuela"
+                      />
                     </div>
 
                     {/* Botones */}
@@ -695,8 +789,34 @@ export default function MisProductosPage() {
                       <textarea id="edit-desc" required rows={3} maxLength={600} value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="form-input resize-none" disabled={editSaving} />
                     </div>
 
-                    {/* Precio + Moneda + Ubicación */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* Campos dinámicos por categoría */}
+                    {CATEGORY_FIELDS[editCategory]?.length > 0 && (
+                      <div>
+                        <label className="form-label">Detalles de {CATEGORY_OPTIONS.find((o) => o.value === editCategory)?.label}</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {CATEGORY_FIELDS[editCategory].map((field) => (
+                            <div key={field.key}>
+                              <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-muted)' }}>
+                                {field.label}
+                              </label>
+                              <input
+                                type={field.type || 'text'}
+                                placeholder={field.placeholder}
+                                value={editCategoryDetails[field.key] || ''}
+                                onChange={(e) =>
+                                  setEditCategoryDetails((prev) => ({ ...prev, [field.key]: e.target.value }))
+                                }
+                                className="form-input"
+                                disabled={editSaving}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Precio + Moneda */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="edit-price" className="form-label">Precio</label>
                         <input id="edit-price" type="number" required min="0" step="0.01" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="form-input" disabled={editSaving} />
@@ -708,10 +828,21 @@ export default function MisProductosPage() {
                           <option value="VES">VES</option>
                         </select>
                       </div>
-                      <div>
-                        <label htmlFor="edit-location" className="form-label">Ubicación</label>
-                        <input id="edit-location" type="text" required value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className="form-input" disabled={editSaving} />
-                      </div>
+                    </div>
+
+                    {/* Ubicación (fila completa para que el mapa se vea bien) */}
+                    <div>
+                      <label htmlFor="edit-location" className="form-label">Ubicación</label>
+                      <LocationPicker
+                        value={editLocation}
+                        onChange={(val, lat, lng) => {
+                          setEditLocation(val);
+                          setEditLocationLat(lat);
+                          setEditLocationLng(lng);
+                        }}
+                        disabled={editSaving}
+                        placeholder="Barinas, Venezuela"
+                      />
                     </div>
 
                     {/* Botones */}
@@ -760,7 +891,7 @@ export default function MisProductosPage() {
                 <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>
                   Publica tu primer producto y llega a compradores de todo Venezuela
                 </p>
-                {profile?.rol === 'vendedor' && (
+                {profile?.rol === 'vendedor' || profile?.rol === 'ambos' && (
                   <button
                     onClick={() => setShowForm(true)}
                     className="btn-primary mt-6"

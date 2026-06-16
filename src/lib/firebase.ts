@@ -21,7 +21,7 @@ import {
   uploadBytesResumable,
   getDownloadURL,
 } from "firebase/storage";
-import type { Category, Product, UserProfile, Order } from "@/src/types";
+import type { Category, Product, UserProfile, Order, Comment } from "@/src/types";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -337,6 +337,113 @@ export async function getSellerOrders(sellerId: string): Promise<Order[]> {
 
 export async function updateOrderStatus(orderId: string, estado: Order['estado']): Promise<void> {
   await updateDoc(doc(db, "orders", orderId), { estado });
+}
+
+// ─── Firestore: Comentarios ─────────────────────────────────────────────────────
+
+export async function addComment(
+  productId: string,
+  userId: string,
+  userName: string,
+  text: string
+): Promise<string> {
+  const docRef = await addDoc(collection(db, "comments"), {
+    productId,
+    userId,
+    userName,
+    text,
+    createdAt: new Date().toISOString(),
+  });
+  return docRef.id;
+}
+
+export async function getComments(productId: string): Promise<Comment[]> {
+  try {
+    const q = query(
+      collection(db, "comments"),
+      where("productId", "==", productId)
+    );
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as Comment))
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+  } catch (err) {
+    console.error("getComments:", err);
+    return [];
+  }
+}
+
+// ─── Firestore: Ratings (likes/dislikes) ────────────────────────────────────────
+
+export async function addRating(
+  productId: string,
+  userId: string,
+  type: 'like' | 'dislike'
+): Promise<void> {
+  const q = query(
+    collection(db, "ratings"),
+    where("productId", "==", productId),
+    where("userId", "==", userId)
+  );
+  const snap = await getDocs(q);
+
+  if (!snap.empty) {
+    const existing = snap.docs[0];
+    if (existing.data().type === type) {
+      await deleteDoc(existing.ref);
+    } else {
+      await updateDoc(existing.ref, { type, createdAt: new Date().toISOString() });
+    }
+  } else {
+    await addDoc(collection(db, "ratings"), {
+      productId,
+      userId,
+      type,
+      createdAt: new Date().toISOString(),
+    });
+  }
+}
+
+export async function getUserRating(
+  productId: string,
+  userId: string
+): Promise<'like' | 'dislike' | null> {
+  try {
+    const q = query(
+      collection(db, "ratings"),
+      where("productId", "==", productId),
+      where("userId", "==", userId)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return snap.docs[0].data().type as 'like' | 'dislike';
+  } catch {
+    return null;
+  }
+}
+
+export async function getProductRatings(
+  productId: string
+): Promise<{ likes: number; dislikes: number }> {
+  try {
+    const q = query(
+      collection(db, "ratings"),
+      where("productId", "==", productId)
+    );
+    const snap = await getDocs(q);
+    let likes = 0;
+    let dislikes = 0;
+    snap.docs.forEach((d) => {
+      if (d.data().type === 'like') likes++;
+      else dislikes++;
+    });
+    return { likes, dislikes };
+  } catch {
+    return { likes: 0, dislikes: 0 };
+  }
 }
 
 export { db, analytics, auth, storage };

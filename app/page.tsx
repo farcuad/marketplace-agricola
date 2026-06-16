@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { auth, getProducts, addProduct, getUserProfile, createOrder, getOrderByProductAndBuyer } from '@/src/lib/firebase';
-import type { Product, Category, CategoryConfig, UserProfile } from '@/src/types';
+import { auth, getProducts, addProduct, getUserProfile, createOrder, getOrderByProductAndBuyer, addComment, getComments, addRating, getUserRating, getProductRatings, updateProduct } from '@/src/lib/firebase';
+import type { Product, Category, CategoryConfig, UserProfile, Comment } from '@/src/types';
 import SubirImagen from '@/src/components/loadImage';
-import { Sprout, Rabbit, Tractor, Wrench, FlaskConical, Package, MapPin, User as UserIcon, Phone, Store, Rocket, PenLine, Check, SearchX, ChevronLeft, ChevronRight, ShoppingCart, ShoppingBag } from 'lucide-react';
+import LocationPicker from '@/src/components/LocationPicker';
+import { Sprout, Rabbit, Tractor, Wrench, FlaskConical, Package, MapPin, User as UserIcon, Phone, Store, Rocket, PenLine, Check, SearchX, ChevronLeft, ChevronRight, ShoppingCart, ShoppingBag, ThumbsUp, ThumbsDown, MessageCircle, Send } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const ITEMS_PER_PAGE = 15;
@@ -21,6 +22,42 @@ const CATEGORIES: CategoryConfig[] = [
   { id: 'fertilizantes', label: 'Fertilizantes', color: '#6d28d9', bgGradient: 'linear-gradient(135deg,#5b21b6,#6d28d9)' },
   { id: 'otros', label: 'Otros', color: '#c2410c', bgGradient: 'linear-gradient(135deg,#9a3412,#c2410c)' },
 ];
+
+// ─── Campos dinámicos por categoría ──────────────────────────────────────────
+interface CategoryField {
+  key: string;
+  label: string;
+  type?: 'text' | 'number' | 'date';
+  placeholder?: string;
+}
+
+const CATEGORY_FIELDS: Record<string, CategoryField[]> = {
+  tractores: [
+    { key: 'marca', label: 'Marca', placeholder: 'John Deere' },
+    { key: 'modelo', label: 'Modelo', placeholder: '5075E' },
+    { key: 'anio', label: 'Año', type: 'number', placeholder: '2020' },
+    { key: 'horas_uso', label: 'Horas de uso', type: 'number', placeholder: '1500' },
+  ],
+  animales: [
+    { key: 'raza', label: 'Raza', placeholder: 'Brahman' },
+    { key: 'edad', label: 'Edad', placeholder: '3 años' },
+    { key: 'peso', label: 'Peso (kg)', type: 'number', placeholder: '450' },
+  ],
+  semillas: [
+    { key: 'tipo', label: 'Tipo', placeholder: 'Maíz' },
+    { key: 'marca', label: 'Marca', placeholder: 'Pioneer' },
+    { key: 'fecha_vencimiento', label: 'Vencimiento', type: 'date' },
+  ],
+  herramientas: [
+    { key: 'marca', label: 'Marca', placeholder: 'Stihl' },
+    { key: 'estado', label: 'Estado', placeholder: 'Usado / Nuevo' },
+  ],
+  fertilizantes: [
+    { key: 'tipo', label: 'Tipo', placeholder: 'Urea' },
+    { key: 'marca', label: 'Marca', placeholder: 'Yara' },
+    { key: 'presentacion', label: 'Presentación', placeholder: 'Saco 50kg' },
+  ],
+};
 
 function CategoryIcon({ id, size = 28 }: { id: string; size?: number }) {
   const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -161,11 +198,42 @@ interface ProductModalProps {
   onClose: () => void;
   user: User | null;
   userProfile: UserProfile | null;
+  onProductUpdate?: (updated: Product) => void;
 }
 
-function ProductModal({ product, onClose, user, userProfile }: ProductModalProps) {
+function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: ProductModalProps) {
   const cat = getCategoryConfig(product.category);
   const waUrl = buildWhatsAppUrl(product.vendorPhone, product.title);
+
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [userRating, setUserRating] = useState<'like' | 'dislike' | null>(null);
+  const [productLikes, setProductLikes] = useState(product.likes ?? 0);
+  const [productDislikes, setProductDislikes] = useState(product.dislikes ?? 0);
+  const [commenting, setCommenting] = useState(false);
+
+  const categoryDetails = product.categoryDetails;
+  const fields = CATEGORY_FIELDS[product.category] ?? [];
+
+  // Cargar comentarios y rating
+  useEffect(() => {
+    const load = async () => {
+      setCommentsLoading(true);
+      try {
+        const [c, r] = await Promise.all([
+          getComments(product.id),
+          user ? getUserRating(product.id, user.uid) : Promise.resolve(null),
+        ]);
+        setComments(c);
+        setUserRating(r);
+      } finally {
+        setCommentsLoading(false);
+      }
+    };
+    load();
+  }, [product.id, user]);
 
   // Cerrar con Escape
   useEffect(() => {
@@ -180,6 +248,44 @@ function ProductModal({ product, onClose, user, userProfile }: ProductModalProps
     };
   }, [onClose]);
 
+  const handleRating = async (type: 'like' | 'dislike') => {
+    if (!user) {
+      Swal.fire({ title: 'Inicia sesión', text: 'Debes iniciar sesión para calificar.', icon: 'warning', confirmButtonColor: '#2d6a4f' });
+      return;
+    }
+    const prev = userRating;
+    const wasSame = prev === type;
+    // Optimistic update
+    setUserRating(wasSame ? null : type);
+    setProductLikes((l) => l + (type === 'like' ? (wasSame ? -1 : prev === 'like' ? 0 : 1) : 0));
+    setProductDislikes((d) => d + (type === 'dislike' ? (wasSame ? -1 : prev === 'dislike' ? 0 : 1) : 0));
+    if (prev === 'like' && type !== 'like') setProductLikes((l) => Math.max(0, l - 1));
+    if (prev === 'dislike' && type !== 'dislike') setProductDislikes((d) => Math.max(0, d - 1));
+    try {
+      await addRating(product.id, user.uid, type);
+      const counts = await getProductRatings(product.id);
+      setProductLikes(counts.likes);
+      setProductDislikes(counts.dislikes);
+    } catch {
+      setUserRating(prev);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!user || !userProfile || !newComment.trim()) return;
+    setCommenting(true);
+    try {
+      await addComment(product.id, user.uid, userProfile.nombre, newComment.trim());
+      setNewComment('');
+      const c = await getComments(product.id);
+      setComments(c);
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo publicar el comentario.', confirmButtonColor: '#16a34a' });
+    } finally {
+      setCommenting(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 bg-[rgba(13,40,24,0.65)] backdrop-blur-[6px] z-100 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]"
@@ -189,7 +295,7 @@ function ProductModal({ product, onClose, user, userProfile }: ProductModalProps
       aria-label={`Detalles de ${product.title}`}
     >
       <div className="bg-white rounded-3xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto shadow-modal animate-[slideUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]">
-        {/* Header del modal — imagen real o emoji con gradiente */}
+        {/* Header del modal */}
         <div
           className="relative flex items-center justify-center overflow-hidden"
           style={{
@@ -232,67 +338,151 @@ function ProductModal({ product, onClose, user, userProfile }: ProductModalProps
         {/* Contenido */}
         <div className="p-6 space-y-5">
           <div>
-            <h2
-              className="font-display text-xl font-bold leading-tight mb-1"
-              style={{ color: 'var(--color-text)' }}
-            >
+            <h2 className="font-display text-xl font-bold leading-tight mb-1" style={{ color: 'var(--color-text)' }}>
               {product.title}
             </h2>
             <div className="flex items-center gap-3 flex-wrap">
               <span className="font-display text-2xl font-bold text-primary-dark">
                 {formatPrice(product.price, product.currency)}
               </span>
-              <span
-                className="text-xs px-2 py-1 rounded-full font-semibold"
-                style={{
-                  background: 'rgba(45,106,79,0.10)',
-                  color: 'var(--color-primary)',
-                }}
-              >
+              <span className="text-xs px-2 py-1 rounded-full font-semibold" style={{ background: 'rgba(45,106,79,0.10)', color: 'var(--color-primary)' }}>
                 {product.currency}
               </span>
             </div>
           </div>
 
-          <div
-            className="p-4 rounded-2xl text-sm leading-relaxed"
-            style={{ background: '#f0f7ee', color: 'var(--color-text)' }}
-          >
+          {/* Descripción */}
+          <div className="p-4 rounded-2xl text-sm leading-relaxed" style={{ background: '#f0f7ee', color: 'var(--color-text)' }}>
             {product.description}
           </div>
 
+          {/* Campos dinámicos por categoría */}
+          {categoryDetails && fields.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-muted)' }}>
+                Detalles de {cat.label}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {fields.map((f) => {
+                  const val = categoryDetails[f.key];
+                  if (!val) return null;
+                  return (
+                    <div key={f.key} className="p-2 rounded-xl text-xs" style={{ background: '#f8fdf8', border: '1px solid var(--color-border)' }}>
+                      <span className="font-semibold" style={{ color: 'var(--color-text-muted)' }}>{f.label}:</span>{' '}
+                      <span style={{ color: 'var(--color-text)' }}>{val}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Metadatos */}
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div
-              className="flex items-center gap-2 p-3 rounded-xl"
-              style={{ background: '#f8fdf8', border: '1px solid var(--color-border)' }}
-            >
+            <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: '#f8fdf8', border: '1px solid var(--color-border)' }}>
               <MapPin size={16} />
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Ubicación</p>
                 <p className="font-medium text-xs" style={{ color: 'var(--color-text)' }}>{product.location}</p>
               </div>
             </div>
-            <div
-              className="flex items-center gap-2 p-3 rounded-xl"
-              style={{ background: '#f8fdf8', border: '1px solid var(--color-border)' }}
-            >
+            <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: '#f8fdf8', border: '1px solid var(--color-border)' }}>
               <UserIcon size={16} />
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Vendedor</p>
                 <p className="font-medium text-xs" style={{ color: 'var(--color-text)' }}>{product.vendorName}</p>
               </div>
             </div>
-            <div
-              className="flex items-center gap-2 p-3 rounded-xl col-span-2"
-              style={{ background: '#f8fdf8', border: '1px solid var(--color-border)' }}
-            >
+            <div className="flex items-center gap-2 p-3 rounded-xl col-span-2" style={{ background: '#f8fdf8', border: '1px solid var(--color-border)' }}>
               <Phone size={16} />
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Teléfono</p>
                 <p className="font-medium text-xs" style={{ color: 'var(--color-text)' }}>+58 {product.vendorPhone}</p>
               </div>
             </div>
+          </div>
+
+          {/* Likes / Dislikes */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => handleRating('like')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${userRating === 'like' ? 'bg-green-100 border-green-400 text-green-700' : 'hover:bg-gray-50 border-border text-text-muted'}`}
+            >
+              <ThumbsUp size={16} className={userRating === 'like' ? 'fill-green-600' : ''} />
+              {productLikes}
+            </button>
+            <button
+              onClick={() => handleRating('dislike')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${userRating === 'dislike' ? 'bg-red-100 border-red-400 text-red-700' : 'hover:bg-gray-50 border-border text-text-muted'}`}
+            >
+              <ThumbsDown size={16} className={userRating === 'dislike' ? 'fill-red-600' : ''} />
+              {productDislikes}
+            </button>
+          </div>
+
+          {/* Comentarios */}
+          <div className="border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
+            <button
+              onClick={() => setShowComments(!showComments)}
+              className="flex items-center gap-2 text-sm font-semibold transition-colors hover:opacity-70"
+              style={{ color: 'var(--color-primary)' }}
+            >
+              <MessageCircle size={16} />
+              {showComments ? 'Ocultar comentarios' : `Ver comentarios (${comments.length})`}
+            </button>
+
+            {showComments && (
+              <div className="mt-4 space-y-3 animate-fade-in">
+                {commentsLoading ? (
+                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Cargando comentarios...</p>
+                ) : comments.length === 0 ? (
+                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Sin comentarios aún. Sé el primero en opinar.</p>
+                ) : (
+                  comments.map((c) => (
+                    <div key={c.id} className="flex gap-2.5">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5" style={{ background: 'var(--color-primary)' }}>
+                        {c.userName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>{c.userName}</span>
+                          <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                            {new Date(c.createdAt).toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })}
+                          </span>
+                        </div>
+                        <p className="text-sm mt-0.5" style={{ color: 'var(--color-text)' }}>{c.text}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {user ? (
+                  <div className="flex gap-2 pt-2">
+                    <input
+                      type="text"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Escribe un comentario..."
+                      maxLength={300}
+                      className="form-input flex-1 text-sm"
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
+                    />
+                    <button
+                      onClick={handleAddComment}
+                      disabled={commenting || !newComment.trim()}
+                      className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40"
+                      style={{ background: 'var(--color-primary)' }}
+                    >
+                      <Send size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs pt-2" style={{ color: 'var(--color-text-muted)' }}>
+                    <button onClick={() => window.location.href = '/login'} className="font-semibold underline" style={{ color: 'var(--color-primary)' }}>Inicia sesión</button> para comentar.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* WhatsApp CTA */}
@@ -372,9 +562,14 @@ export default function Home() {
   const [publishCategory, setPublishCategory] = useState<Category>('animales');
   const [publishLocation, setPublishLocation] = useState('');
   const [publishImageUrl, setPublishImageUrl] = useState('');
+  const [publishLocationLat, setPublishLocationLat] = useState<number | undefined>();
+  const [publishLocationLng, setPublishLocationLng] = useState<number | undefined>();
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState('');
   const [publishSuccess, setPublishSuccess] = useState(false);
+
+  // Campos dinámicos de categoría
+  const [publishCategoryDetails, setPublishCategoryDetails] = useState<Record<string, string>>({});
 
   // Observer de autenticación
   useEffect(() => {
@@ -448,7 +643,10 @@ export default function Home() {
     setPublishCurrency('USD');
     setPublishCategory('animales');
     setPublishLocation('');
+    setPublishLocationLat(undefined);
+    setPublishLocationLng(undefined);
     setPublishImageUrl('');
+    setPublishCategoryDetails({});
     setPublishError('');
   };
 
@@ -467,6 +665,11 @@ export default function Home() {
         currency: publishCurrency,
         category: publishCategory,
         location: publishLocation.trim(),
+        locationLat: publishLocationLat,
+        locationLng: publishLocationLng,
+        categoryDetails: Object.keys(publishCategoryDetails).length > 0 ? publishCategoryDetails : undefined,
+        likes: 0,
+        dislikes: 0,
         imageUrl: publishImageUrl,
         vendorId: user.uid,
         vendorName: userProfile.nombre,
@@ -529,7 +732,7 @@ export default function Home() {
           <div className="flex items-center gap-2 ml-auto sm:ml-0">
             {user ? (
               <div className="flex items-center gap-2">
-                {userProfile?.rol === 'vendedor' && (
+                {(userProfile?.rol === 'vendedor' || userProfile?.rol === 'ambos') && (
                   <button
                     id="publish-btn-header"
                     onClick={() => { setShowPublishModal(true); resetPublishForm(); }}
@@ -914,8 +1117,34 @@ export default function Home() {
                   <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{publishDescription.length}/600</p>
                 </div>
 
-                {/* Precio + Moneda + Ubicación */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Campos dinámicos por categoría */}
+                {CATEGORY_FIELDS[publishCategory]?.length > 0 && (
+                  <div>
+                    <label className="form-label">Detalles de {getCategoryConfig(publishCategory).label}</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {CATEGORY_FIELDS[publishCategory].map((field) => (
+                        <div key={field.key}>
+                          <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-muted)' }}>
+                            {field.label}
+                          </label>
+                          <input
+                            type={field.type || 'text'}
+                            placeholder={field.placeholder}
+                            value={publishCategoryDetails[field.key] || ''}
+                            onChange={(e) =>
+                              setPublishCategoryDetails((prev) => ({ ...prev, [field.key]: e.target.value }))
+                            }
+                            className="form-input"
+                            disabled={publishing}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Precio + Moneda */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="pub-price" className="form-label">Precio</label>
                     <input
@@ -944,19 +1173,21 @@ export default function Home() {
                       <option value="VES">VES — Bolívares</option>
                     </select>
                   </div>
-                  <div>
-                    <label htmlFor="pub-location" className="form-label">Ubicación</label>
-                    <input
-                      id="pub-location"
-                      type="text"
-                      required
-                      placeholder="Barinas, Venezuela"
-                      value={publishLocation}
-                      onChange={(e) => setPublishLocation(e.target.value)}
-                      className="form-input"
-                      disabled={publishing}
-                    />
-                  </div>
+                </div>
+
+                {/* Ubicación (fila completa para que el mapa se vea bien) */}
+                <div>
+                  <label htmlFor="pub-location" className="form-label">Ubicación</label>
+                  <LocationPicker
+                    value={publishLocation}
+                    onChange={(val, lat, lng) => {
+                      setPublishLocation(val);
+                      setPublishLocationLat(lat);
+                      setPublishLocationLng(lng);
+                    }}
+                    disabled={publishing}
+                    placeholder="Barinas, Venezuela"
+                  />
                 </div>
 
                 {/* Botones */}
