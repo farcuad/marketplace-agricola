@@ -42,8 +42,7 @@ function OrderCard({ order }: OrderCardProps) {
           <span className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>x{order.cantidad_solicitada}</span>
         </div>
         <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          <span className="font-mono">{order.id_orden}</span>
-          <span className="ml-2">{new Date(order.fecha_contacto).toLocaleDateString('es-VE')}</span>
+          <span className="ml-2">Fecha de contacto {new Date(order.fecha_contacto).toLocaleDateString('es-VE')}</span>
         </div>
       </div>
     </div>
