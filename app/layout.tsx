@@ -35,7 +35,7 @@ export default function RootLayout({ children, }: Readonly<{ children: React.Rea
       lang="es"
       className={`${inter.variable} ${outfit.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col antialiased">
+      <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>

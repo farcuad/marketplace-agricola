@@ -47,7 +47,7 @@ const CATEGORY_FIELDS: Record<string, CategoryField[]> = {
     { key: 'marca', label: 'Marca', placeholder: 'John Deere' },
     { key: 'modelo', label: 'Modelo', placeholder: '5075E' },
     { key: 'anio', label: 'Año', type: 'number', placeholder: '2020' },
-    { key: 'horas_uso', label: 'Horas de uso', type: 'number', placeholder: '1500' },
+    { key: 'horas_uso', label: 'Kilometraje', type: 'number', placeholder: '1500' },
   ],
   animales: [
     { key: 'raza', label: 'Raza', placeholder: 'Brahman' },
@@ -227,6 +227,9 @@ export default function MisProductosPage() {
   const [editImageUrl, setEditImageUrl] = useState('');
   const [editCategoryDetails, setEditCategoryDetails] = useState<Record<string, string>>({});
   const [editSaving, setEditSaving] = useState(false);
+  const [editGallery, setEditGallery] = useState<string[]>([]);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // Formulario
   const [title, setTitle] = useState('');
@@ -415,6 +418,7 @@ export default function MisProductosPage() {
     setEditLocationLat(product.locationLat);
     setEditLocationLng(product.locationLng);
     setEditImageUrl(product.imageUrl ?? '');
+    setEditGallery(product.gallery ?? []);
     setEditCategoryDetails(product.categoryDetails ?? {});
   };
 
@@ -434,11 +438,12 @@ export default function MisProductosPage() {
         locationLng: editLocationLng,
         categoryDetails: Object.keys(editCategoryDetails).length > 0 ? editCategoryDetails : undefined,
         imageUrl: editImageUrl,
+        gallery: editGallery,
       });
       setProducts((prev) =>
         prev.map((p) =>
           p.id === editingProduct.id
-            ? { ...p, title: editTitle.trim(), description: editDescription.trim(), price: parseFloat(editPrice), currency: editCurrency, category: editCategory, location: editLocation.trim(), locationLat: editLocationLat, locationLng: editLocationLng, categoryDetails: editCategoryDetails, imageUrl: editImageUrl }
+            ? { ...p, title: editTitle.trim(), description: editDescription.trim(), price: parseFloat(editPrice), currency: editCurrency, category: editCategory, location: editLocation.trim(), locationLat: editLocationLat, locationLng: editLocationLng, categoryDetails: editCategoryDetails, imageUrl: editImageUrl, gallery: editGallery }
             : p
         )
       );
@@ -448,6 +453,30 @@ export default function MisProductosPage() {
       Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el producto.', confirmButtonColor: '#16a34a' });
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setGalleryUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'marketplace_presets');
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        { method: 'POST', body: formData }
+      );
+      const data = await res.json();
+      if (data.secure_url) {
+        setEditGallery((prev) => [...prev, data.secure_url]);
+      }
+    } catch (err) {
+      console.error('Error al subir foto de galería:', err);
+    } finally {
+      setGalleryUploading(false);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
     }
   };
 
@@ -765,6 +794,65 @@ export default function MisProductosPage() {
                       ) : (
                         <SubirImagen onSubidaExitosa={(url) => setEditImageUrl(url)} />
                       )}
+                    </div>
+
+                    {/* Galería de fotos adicionales */}
+                    <div>
+                      <label className="form-label">Galería de fotos</label>
+                      <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
+                        Agrega fotos desde distintos ángulos (frontal, lateral, trasera, etc.)
+                      </p>
+
+                      {editGallery.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {editGallery.map((url, idx) => (
+                            <div
+                              key={idx}
+                              className="relative group rounded-xl overflow-hidden border"
+                              style={{ width: '88px', height: '88px', borderColor: 'var(--color-border)' }}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={url}
+                                alt={`Foto ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditGallery((prev) => prev.filter((_, i) => i !== idx))
+                                }
+                                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ background: 'rgba(239,68,68,0.85)' }}
+                                aria-label="Eliminar foto"
+                              >
+                                <X size={10} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <input
+                        type="file"
+                        ref={galleryInputRef}
+                        onChange={handleGalleryUpload}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        disabled={galleryUploading || editGallery.length >= 10}
+                        onClick={() => galleryInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border-2 border-dashed transition-all hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}
+                      >
+                        {galleryUploading ? (
+                          <><svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Subiendo...</>
+                        ) : (
+                          <><Plus size={14} /> Agregar foto ({editGallery.length}/10)</>
+                        )}
+                      </button>
                     </div>
 
                     {/* Título + Categoría */}

@@ -8,7 +8,9 @@ import { auth, getProducts, addProduct, getUserProfile, createOrder, getOrderByP
 import type { Product, Category, CategoryConfig, UserProfile, Comment } from '@/src/types';
 import SubirImagen from '@/src/components/loadImage';
 import LocationPicker from '@/src/components/LocationPicker';
-import { Sprout, Rabbit, Tractor, Wrench, FlaskConical, Package, MapPin, User as UserIcon, Phone, Store, Rocket, PenLine, Check, SearchX, ChevronLeft, ChevronRight, ShoppingCart, ShoppingBag, ThumbsUp, ThumbsDown, MessageCircle, Send } from 'lucide-react';
+import { Sprout, Rabbit, Tractor, Wrench, FlaskConical, Package, MapPin, User as UserIcon, Phone, Store, Rocket, PenLine, Check, SearchX, ChevronLeft, ChevronRight, ShoppingCart, ShoppingBag, ThumbsUp, ThumbsDown, MessageCircle, Send, ChevronLeft as ArrowLeft, ChevronRight as ArrowRight } from 'lucide-react';
+import Zoom from 'react-medium-image-zoom';
+import 'react-medium-image-zoom/dist/styles.css';
 import Swal from 'sweetalert2';
 
 const ITEMS_PER_PAGE = 15;
@@ -37,7 +39,7 @@ const CATEGORY_FIELDS: Record<string, CategoryField[]> = {
     { key: 'marca', label: 'Marca', placeholder: 'John Deere' },
     { key: 'modelo', label: 'Modelo', placeholder: '5075E' },
     { key: 'anio', label: 'Año', type: 'number', placeholder: '2020' },
-    { key: 'horas_uso', label: 'Horas de uso', type: 'number', placeholder: '1500' },
+    { key: 'horas_uso', label: 'Kilometraje', type: 'number', placeholder: '1500' },
   ],
   animales: [
     { key: 'raza', label: 'Raza', placeholder: 'Brahman' },
@@ -216,6 +218,12 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
   const [productLikes, setProductLikes] = useState(product.likes ?? 0);
   const [productDislikes, setProductDislikes] = useState(product.dislikes ?? 0);
   const [commenting, setCommenting] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const allImages = [
+    ...(product.imageUrl ? [product.imageUrl] : []),
+    ...(product.gallery ?? []),
+  ];
 
   const categoryDetails = product.categoryDetails;
   const fields = CATEGORY_FIELDS[product.category] ?? [];
@@ -241,10 +249,18 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
     load();
   }, [product.id, user]);
 
-  // Cerrar con Escape
+  // Cerrar con Escape y navegar galería con flechas
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') { onClose(); return; }
+      if (allImages.length > 1) {
+        if (e.key === 'ArrowLeft') {
+          setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+        }
+        if (e.key === 'ArrowRight') {
+          setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+        }
+      }
     };
     document.addEventListener('keydown', handler);
     document.body.style.overflow = 'hidden';
@@ -252,7 +268,7 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
       document.removeEventListener('keydown', handler);
       document.body.style.overflow = '';
     };
-  }, [onClose]);
+  }, [onClose, allImages.length]);
 
   const handleRating = async (type: 'like' | 'dislike') => {
     if (!user) {
@@ -301,32 +317,94 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
       aria-label={`Detalles de ${product.title}`}
     >
       <div className="bg-white rounded-3xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto shadow-modal animate-[slideUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]">
-        {/* Header del modal */}
+        {/* Header del modal — galería con zoom */}
         <div
-          className="relative flex items-center justify-center overflow-hidden"
+          className="relative flex items-center justify-center overflow-hidden select-none"
           style={{
-            background: product.imageUrl ? '#0d2818' : cat.bgGradient,
+            background: allImages.length > 0 ? '#0d2818' : cat.bgGradient,
             height: '220px',
             borderRadius: '24px 24px 0 0',
           }}
         >
-          {product.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={product.imageUrl}
-              alt={product.title}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', padding: '8px' }}
-            />
+          {allImages.length > 0 ? (
+            <>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px' }}>
+                <Zoom zoomMargin={40}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={allImages[currentImageIndex]}
+                    alt={product.title}
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'zoom-in', display: 'block' }}
+                  />
+                </Zoom>
+              </div>
+
+              {/* Flecha izquierda */}
+              {allImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+                  }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white transition-all hover:bg-white/30"
+                  style={{ background: 'rgba(0,0,0,0.35)', zIndex: 2 }}
+                  aria-label="Imagen anterior"
+                >
+                  <ArrowLeft size={16} />
+                </button>
+              )}
+
+              {/* Flecha derecha */}
+              {allImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white transition-all hover:bg-white/30"
+                  style={{ background: 'rgba(0,0,0,0.35)', zIndex: 2 }}
+                  aria-label="Siguiente imagen"
+                >
+                  <ArrowRight size={16} />
+                </button>
+              )}
+
+              {/* Dots indicadores */}
+              {allImages.length > 1 && (
+                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1.5" style={{ zIndex: 2 }}>
+                  {allImages.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex(idx);
+                      }}
+                      className="rounded-full transition-all"
+                      style={{
+                        width: idx === currentImageIndex ? '18px' : '6px',
+                        height: '6px',
+                        background: idx === currentImageIndex ? '#fff' : 'rgba(255,255,255,0.5)',
+                      }}
+                      aria-label={`Imagen ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             <span style={{ fontSize: '5rem', filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.25))' }}>
               <CategoryIcon id={cat.id} size={56} />
             </span>
           )}
+
           <button
             onClick={onClose}
             id="modal-close-btn"
             className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-white transition-all"
-            style={{ background: 'rgba(0,0,0,0.35)', zIndex: 1 }}
+            style={{ background: 'rgba(0,0,0,0.35)', zIndex: 3 }}
             aria-label="Cerrar modal"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -335,7 +413,7 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
           </button>
           <span
             className="absolute bottom-4 left-4 text-xs font-bold uppercase tracking-wider text-white px-3 py-1 rounded-full"
-            style={{ background: 'rgba(0,0,0,0.40)', zIndex: 1 }}
+            style={{ background: 'rgba(0,0,0,0.40)', zIndex: 2 }}
           >
             {cat.label}
           </span>

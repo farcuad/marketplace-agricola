@@ -1,15 +1,1 @@
-[browser] Uncaught TypeError: Cannot read properties of undefined (reading 'appendChild')
-    at MapView (src/components/MapView.tsx:50:7)
-    at ProductModal (app/page.tsx:413:87)
-    at Home (app/page.tsx:1004:12)
-  48 |       scrollWheelZoom={true}
-  49 |     >
-> 50 |       <TileLayer
-     |       ^
-  51 |         attribution='&copy; <a href="https://www.openstreetmap.org/cop...
-  52 |         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  53 |       />
-[browser] Uncaught Error: Map container is being reused by another instance
-    at MapContainerComponent (<anonymous>)
-
 

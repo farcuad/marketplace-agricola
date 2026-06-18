@@ -16,6 +16,8 @@ export interface Product {
   currency: 'USD' | 'VES' | 'COP';
   category: Category;
   imageUrl?: string;
+  /** URLs de fotos adicionales (galería) agregadas después de publicar */
+  gallery?: string[];
   location: string;
   locationLat?: number;
   locationLng?: number;

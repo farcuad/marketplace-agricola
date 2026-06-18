@@ -24,6 +24,7 @@ function traducirError(code: string): string {
 
 export default function LoginPage() {
   const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
@@ -34,13 +35,28 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMsg, setResetMsg] = useState('');
 
-  // Si ya hay sesión activa, redirigir al home
+  // Si ya hay sesión activa, redirigir al home inmediatamente
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
-      if (u) router.replace('/');
+      if (u) {
+        router.replace('/');
+      } else {
+        setCheckingAuth(false);
+      }
     });
     return unsub;
   }, [router]);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-bg)' }}>
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm mt-4" style={{ color: 'var(--color-text-muted)' }}>Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
