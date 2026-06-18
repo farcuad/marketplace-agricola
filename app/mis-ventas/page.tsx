@@ -43,8 +43,7 @@ function SaleCard({ order, onStatusChange }: SaleCardProps) {
           <span className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>x{order.cantidad_solicitada}</span>
         </div>
         <div className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
-          <span className="font-mono">{order.id_orden}</span>
-          <span className="ml-2">{new Date(order.fecha_contacto).toLocaleDateString('es-VE')}</span>
+          <span className="ml-2">Fecha de contacto {new Date(order.fecha_contacto).toLocaleDateString('es-VE')}</span>
         </div>
         <select value={order.estado} onChange={(e) => onStatusChange(order.id, e.target.value as Order['estado'])} className="form-input w-full text-xs" style={{ padding: '7px 10px' }} aria-label={'Estado de ' + order.nombre_producto}>
           <option value="contactado">Contactado</option>

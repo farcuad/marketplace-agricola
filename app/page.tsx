@@ -219,11 +219,38 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
   const [productDislikes, setProductDislikes] = useState(product.dislikes ?? 0);
   const [commenting, setCommenting] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
 
   const allImages = [
     ...(product.imageUrl ? [product.imageUrl] : []),
     ...(product.gallery ?? []),
   ];
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+    const dx = e.changedTouches[0].clientX - touchStart.x;
+    const dy = e.changedTouches[0].clientY - touchStart.y;
+    if (allImages.length > 1 && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      if (dx > 0) {
+        setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+      } else {
+        setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+      }
+    }
+    setTouchStart(null);
+  };
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+  };
 
   const categoryDetails = product.categoryDetails;
   const fields = CATEGORY_FIELDS[product.category] ?? [];
@@ -254,12 +281,8 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { onClose(); return; }
       if (allImages.length > 1) {
-        if (e.key === 'ArrowLeft') {
-          setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
-        }
-        if (e.key === 'ArrowRight') {
-          setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
-        }
+        if (e.key === 'ArrowLeft') handlePrevImage();
+        if (e.key === 'ArrowRight') handleNextImage();
       }
     };
     document.addEventListener('keydown', handler);
@@ -328,8 +351,58 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
         >
           {allImages.length > 0 ? (
             <>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px' }}>
-                <Zoom zoomMargin={40}>
+              <div
+                style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px' }}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
+                <Zoom
+                  zoomMargin={40}
+                  ZoomContent={({ buttonUnzoom, img }) => (
+                    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {img}
+                      {buttonUnzoom}
+                      {allImages.length > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-white transition-all hover:bg-white/30 z-10"
+                            style={{ background: 'rgba(0,0,0,0.45)' }}
+                            aria-label="Imagen anterior"
+                          >
+                            <ArrowLeft size={20} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-white transition-all hover:bg-white/30 z-10"
+                            style={{ background: 'rgba(0,0,0,0.45)' }}
+                            aria-label="Siguiente imagen"
+                          >
+                            <ArrowRight size={20} />
+                          </button>
+                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                            {allImages.map((_, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
+                                className="rounded-full transition-all"
+                                style={{
+                                  width: idx === currentImageIndex ? '24px' : '8px',
+                                  height: '8px',
+                                  background: idx === currentImageIndex ? '#fff' : 'rgba(255,255,255,0.5)',
+                                }}
+                                aria-label={`Imagen ${idx + 1}`}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={allImages[currentImageIndex]}
@@ -339,59 +412,44 @@ function ProductModal({ product, onClose, user, userProfile, onProductUpdate }: 
                 </Zoom>
               </div>
 
-              {/* Flecha izquierda */}
+              {/* Flechas de navegación (vista normal) */}
               {allImages.length > 1 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
-                  }}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white transition-all hover:bg-white/30"
-                  style={{ background: 'rgba(0,0,0,0.35)', zIndex: 2 }}
-                  aria-label="Imagen anterior"
-                >
-                  <ArrowLeft size={16} />
-                </button>
-              )}
-
-              {/* Flecha derecha */}
-              {allImages.length > 1 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
-                  }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white transition-all hover:bg-white/30"
-                  style={{ background: 'rgba(0,0,0,0.35)', zIndex: 2 }}
-                  aria-label="Siguiente imagen"
-                >
-                  <ArrowRight size={16} />
-                </button>
-              )}
-
-              {/* Dots indicadores */}
-              {allImages.length > 1 && (
-                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1.5" style={{ zIndex: 2 }}>
-                  {allImages.map((_, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCurrentImageIndex(idx);
-                      }}
-                      className="rounded-full transition-all"
-                      style={{
-                        width: idx === currentImageIndex ? '18px' : '6px',
-                        height: '6px',
-                        background: idx === currentImageIndex ? '#fff' : 'rgba(255,255,255,0.5)',
-                      }}
-                      aria-label={`Imagen ${idx + 1}`}
-                    />
-                  ))}
-                </div>
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white transition-all hover:bg-white/30"
+                    style={{ background: 'rgba(0,0,0,0.35)', zIndex: 2 }}
+                    aria-label="Imagen anterior"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white transition-all hover:bg-white/30"
+                    style={{ background: 'rgba(0,0,0,0.35)', zIndex: 2 }}
+                    aria-label="Siguiente imagen"
+                  >
+                    <ArrowRight size={16} />
+                  </button>
+                  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1.5" style={{ zIndex: 2 }}>
+                    {allImages.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
+                        className="rounded-full transition-all"
+                        style={{
+                          width: idx === currentImageIndex ? '18px' : '6px',
+                          height: '6px',
+                          background: idx === currentImageIndex ? '#fff' : 'rgba(255,255,255,0.5)',
+                        }}
+                        aria-label={`Imagen ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </>
           ) : (
